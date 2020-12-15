@@ -2,10 +2,30 @@ version 1.0
 
 workflow debarcerWorkflow {
   input {
-
-
-
-
+    String outdir = "./"    
+    File bamFile
+    File bedFile
+    Int distance = 1
+    Int position = 10
+    String separator
+    Int readCount = 0
+    Boolean truncate = false
+    Boolean ignoreOrphans = false
+    Int maxDepth = 1000000
+    String stepper = "nofilter"
+    Int baseQuality = 25
+    String familySize
+    Float percentThreshold = 50 
+    Int countThreshold = 1
+    Float referenceThreshold = 95
+    Float alternativeThreshold = 2
+    Int filterThreshold = 10
+    String extension = "png"
+    Boolean report = true
+    Int minCov = 1000
+    Float minRatio = 0.1
+    Int minUmis = 1000
+    Int minChildren = 500
   }
 
 
@@ -232,8 +252,3 @@ task graph {
 }
 
 
-
-task mergeFiles{}
-
-
-task report {}
