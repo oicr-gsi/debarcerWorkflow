@@ -4,13 +4,14 @@ workflow debarcerWorkflow {
   input {
     String outdir = "./"    
     File bamFile
-    File bedFile
+    File regionFile
     Int distance = 1
     Int position = 10
     String separator
     Int readCount = 0
     Boolean truncate = false
     Boolean ignoreOrphans = false
+    Boolean ignore = false
     Int maxDepth = 1000000
     String stepper = "nofilter"
     Int baseQuality = 25
@@ -30,11 +31,31 @@ workflow debarcerWorkflow {
 
 
   parameter_meta {
-
-
-
-
-
+    outdir: "Output directory with subdirectory structure"    
+    bamFile: "Path to alignment file" 
+    regionFile: "Path to file with genomic regions"
+    distance: "Hamming distance threshold for connecting parent-children umis"
+    position: "Umi position threshold for grouping umis together"
+    separator: "String separating the UMI from the remaining of the read name"
+    readCount: "Minimum number of reads in region required for grouping"
+    truncate: "Only pileup columns in the exact region specificied are returned if True. (ie, discard reads overlapping the region)"
+    ignoreOrphans: "Ignore orphans (paired reads that are not in a proper pair) if True"
+    ignore: "Keep the most abundant family and ignore families at other positions within each group if True"
+    maxDepth: "Maximum read depth"
+    stepper: "Filter or include reads in the pileup. all: skip reads with BAM_FUNMAP, BAM_FSECONDARY, BAM_FQCFAIL, BAM_FDUP flags, nofilter: uses every single read turning off any filtering"
+    baseQuality: "Base quality score threshold. Bases with quality scores below the threshold are not used in the consensus"
+    familySize: " Comma-separated list of minimum umi family size to collapase on"
+    percentThreshold: "Majority rule consensus threshold in pileup column"
+    countThreshold: "Base count threshold in pileup column"
+    referenceThreshold: "Positions with frequency below reference threshold are considered variable"
+    alternativeThreshold: "Variants with frequency above alternative are considered alternative alleles"
+    filterThreshold: "Minimum number of reads to pass alternative variants"
+    extension: "Figure format"
+    report: "Generate a report if true"
+    minCov: "Minimum coverage value. Values below are plotted in red"
+    minRatio: "Minimum children to parent umi ratio. Values below are plotted in red"
+    minUmis: "Minimum umi count. Values below are plotted in red"
+    minChildren: "Minimum children umi count. Values below are plotted in red"
   }
 
   meta {
