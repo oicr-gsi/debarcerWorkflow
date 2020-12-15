@@ -197,10 +197,43 @@ task callVariants {
 }
 
 
+task graph {
+  input {
+    String modules = "debarcer/2.1.3"
+    Int memory = 32
+    Int timeout = 36
+    String outdir = "./"
+    String extension = "png"
+    String sample = sampleName
+    Boolean report = true
+    Int minCov = 1000
+    Float minRatio = 0.1
+    Int minUmis = 1000
+    Int minChildren = 500
+    Float refThreshold = 95
+  }    
+
+  command <<<
+    set -euo pipefail
+    debarcer plot -d ~{outdir} -e ~{extension} -s ~{sample} -r ~{report} -mv ~{minCov} -mr ~{minRatio} -mu ~{minUmis} -mc ~{minChildren} -rt ~{refThreshold}
+  >>>
+
+  runtime {
+    memory:  "~{memory} GB"
+    modules: "~{modules}"
+    timeout: "~{timeout}"
+  }
+
+  output {
+    Array[File] figureFiles = glob("${outdir}/Figures/*.png")
+    Array[File] imageFiles = glob("${outdir}/Figures/*.svg")
+    File report = "${outdir}/Report/debarcer_report.html"
+  }
+}
+
+
+
 task mergeFiles{}
 
 
 task report {}
-
-
-task graph {}
