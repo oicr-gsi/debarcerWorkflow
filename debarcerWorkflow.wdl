@@ -65,6 +65,12 @@ workflow debarcerWorkflow {
   }
 
 
+  call regionFileIntoArray {
+    input:
+      regionFile = regionFile
+  } 
+
+
   scatter(region in regionFileIntoArray.out) {
     call groupUmis {
       input:
@@ -78,7 +84,7 @@ workflow debarcerWorkflow {
         ignoreOrphans = ignoreOrphans,  
         region = region
     }
-  
+  }    
   
   Array[File] dataFilesGroup = groupUmis.dataFile
   Array[File] umiFamiliesGroup = groupUmis.umiFamilies
@@ -86,12 +92,69 @@ workflow debarcerWorkflow {
   Array[File] umiStats = groupUmis.umis
   Array[File] readCountStats = groupUmis.mappedReadCounts
   
+  Array[Pair[String, File]] pairedRegionsUmiFiles = zip(regionFileIntoArray.out, groupUmis.umiFamilies)
   
+  scatter(i in pairedRegionsUmiFiles) {
+    call collapseUmis {
+      input:
+        bamFile = bamFile,
+        region = i.left,
+        umiFile= i.right,
+        maxDepth = maxDepth,
+        truncate = truncate,
+        ignoreOrphans = ignoreOrphans,
+        stepper = stepper,
+        separator = separator,
+        baseQuality = baseQuality,
+        familySize = familySize,
+        percentThreshold = percentThreshold,
+        countThreshold = countThreshold,
+        positionThreshold = positionThreshold
+    }
+  }
+
+  File coverage = collapseUmis.coverage
+  Array[File] consensusFiles = collapseUmis.consensus
+    
+
+  call callVariants {
+    input:
+      outdir = outdir,
+      referenceThreshold = referenceThreshold,
+      alternativeThreshold = alternativeThreshold,
+      filterThreshold = filterThreshold,
+      familySize = familySize
+  }
+
+
+  Array[File] vcfFiles = callVariants.vcfFiles
+
   
+  call graph {
+    input:
+      outdir = outdir,
+      extension = extension,
+      report = report,
+      minCov = minCov,
+      minRatio = minRatio,
+      minUmis = minUmis,
+      minChildren = minChildren,
+      refThreshold = refThreshold
+  }    
+
+  File summaryReport = graph.summaryReport
   
 
   output {
-     
+    Array[File] dataFilesGroup = groupUmis.dataFile
+    Array[File] umiFamiliesGroup = groupUmis.umiFamilies
+    Array[File] umiReleationshipsGroup = groupUmis.umiRelationships
+    Array[File] umiStats = groupUmis.umis
+    Array[File] readCountStats = groupUmis.mappedReadCounts
+    File coverage = collapseUmis.coverage
+    Array[File] consensusFiles = collapseUmis.consensus
+    Array[File] vcfFiles = callVariants.vcfFiles
+    File summaryReport = graph.summaryReport
   }
 }
 
@@ -244,7 +307,7 @@ task graph {
   output {
     Array[File] figureFiles = glob("${outdir}/Figures/*.png")
     Array[File] imageFiles = glob("${outdir}/Figures/*.svg")
-    File report = "${outdir}/Report/debarcer_report.html"
+    File summaryReport = "${outdir}/Report/debarcer_report.html"
   }
 }
 
