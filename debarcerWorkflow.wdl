@@ -65,62 +65,38 @@ workflow debarcerWorkflow {
   }
 
 
+  scatter(region in regionFileIntoArray.out) {
+    call groupUmis {
+      input:
+        outdir = outdir,
+        bamFile = bamFile,
+        distance = distance,
+        position = position,
+        separator = seprator,   
+        readCount = readCount,
+        truncate = truncate,
+        ignoreOrphans = ignoreOrphans,  
+        region = region
+    }
+  
+  
+  Array[File] dataFilesGroup = groupUmis.dataFile
+  Array[File] umiFamiliesGroup = groupUmis.umiFamilies
+  Array[File] umiReleationshipsGroup = groupUmis.umiRelationships
+  Array[File] umiStats = groupUmis.umis
+  Array[File] readCountStats = groupUmis.mappedReadCounts
+  
+  
+  
   
 
-  call assignSmmips {
-    input:
-      fastq1 = fastq1,
-      fastq2 = fastq2,
-      panel = panel,
-      outdir = outdir,
-      prefix = prefix,  
-      maxSubs = maxSubs,
-      upstreamNucleotides = upstreamNucleotides,
-      umiLength = umiLength, 
-      match = match,
-      mismatch = mismatch,
-      gapOpening = gapOpening,
-      gapExtension = gapExtension,  
-      alignmentOverlapThreshold = alignmentOverlapThreshold,
-      matchesThreshold = matchesThreshold,
-      remove = removeIntermediate
-  }
-
-  File assignedBam = assignSmmips.assignedBam 
-  File assignedBamIndex = assignSmmips.assignedBamIndex 
-
-  Boolean truncateColumn = if truncate then true else false
-  Boolean ignoreOrphanReads = if ignoreOrphans then true else false
-
-  call countVariants {
-    input: 
-      assignedBam = assignedBam,
-      assignedBamIndex = assignedBamIndex,
-      panel = panel,
-      outdir = outdir,
-      prefix = prefix,  
-      truncate = truncateColumn,
-      ignoreOrphans = ignoreOrphanReads,
-      stepper = stepper,
-      maxDepth = maxDepth,
-      referenceName = referenceName,
-      cosmicFile = cosmicFile
-  }
-
   output {
-    File outputExtractionMetrics = assignSmmips.extractionMetrics
-    File outputReadCounts = assignSmmips.readCounts
-    File outputSortedbam = assignSmmips.sortedbam
-    File outputSortedbamIndex = assignSmmips.sortedbamIndex
-    File outputAssignedBam = assignSmmips.assignedBam
-    File outputAssignedBamIndex = assignSmmips.assignedBamIndex
-    File outputUnassignedBam = assignSmmips.unassignedBam
-    File outputUnassignedBamIndex = assignSmmips.unassignedBamIndex
-    File outputEmptyBam = assignSmmips.emptyBam
-    File outputEmptyBamIndex = assignSmmips.emptyBamIndex
-    File outputCountTable = countVariants.countTable 
+     
   }
 }
+
+
+
 
 task groupUmis {
   input {
@@ -269,6 +245,30 @@ task graph {
     Array[File] figureFiles = glob("${outdir}/Figures/*.png")
     Array[File] imageFiles = glob("${outdir}/Figures/*.svg")
     File report = "${outdir}/Report/debarcer_report.html"
+  }
+}
+
+
+task regionFileIntoArray {
+  input {
+    File regionFile
+    Int memory = 1
+    Int timeout = 1
+  }    
+
+  command <<<
+    set -euo pipefail
+    arr=()
+    for line in `cat "~{regionFile}" | while read line ; do echo $line | sed "s/ /:/" | sed "s/ /-/"; done;`; do arr+=("$line"); done;
+  >>>
+
+  runtime {
+    memory:  "~{memory} GB"
+    timeout: "~{timeout}"
+  }
+
+  output {
+    Array[String] out = "${arr}"
   }
 }
 
