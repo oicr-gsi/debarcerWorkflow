@@ -86,13 +86,13 @@ workflow debarcerWorkflow {
     }
   }    
   
-  Array[File] dataFilesGroup = groupUmis.dataFile
+  #Array[File] dataFilesGroup = groupUmis.dataFile
   Array[File] umiFamiliesGroup = groupUmis.umiFamilies
-  Array[File] umiReleationshipsGroup = groupUmis.umiRelationships
-  Array[File] umiStats = groupUmis.umis
-  Array[File] readCountStats = groupUmis.mappedReadCounts
+  #Array[File] umiReleationshipsGroup = groupUmis.umiRelationships
+  #Array[File] umiStats = groupUmis.umis
+  #Array[File] readCountStats = groupUmis.mappedReadCounts
   
-  Array[Pair[String, File]] pairedRegionsUmiFiles = zip(regionFileIntoArray.out, groupUmis.umiFamilies)
+  Array[Pair[String, File]] pairedRegionsUmiFiles = zip(regionFileIntoArray.out, umiFamiliesGroup)
   
   scatter(i in pairedRegionsUmiFiles) {
     call collapseUmis {
@@ -113,8 +113,8 @@ workflow debarcerWorkflow {
     }
   }
 
-  File coverage = collapseUmis.coverage
-  Array[File] consensusFiles = collapseUmis.consensus
+  #File coverage = collapseUmis.coverage
+  #Array[File] consensusFiles = collapseUmis.consensus
 
 
   call mergeConsensusFiles {
@@ -122,7 +122,7 @@ workflow debarcerWorkflow {
     outdir = outdir
   }
   
-  File mergedConsensus = mergeConsensusFiles.mergedConsensus
+  #File mergedConsensus = mergeConsensusFiles.mergedConsensus
 
   call callVariants {
     input:
@@ -134,7 +134,7 @@ workflow debarcerWorkflow {
   }
 
 
-  Array[File] vcfFiles = callVariants.vcfFiles
+  #Array[File] vcfFiles = callVariants.vcfFiles
 
   
   call graph {
@@ -149,23 +149,15 @@ workflow debarcerWorkflow {
       refThreshold = refThreshold
   }    
 
-  File summaryReport = graph.summaryReport
+  #File summaryReport = graph.summaryReport
   
 
   output {
-    Array[File] dataFilesGroup = groupUmis.dataFile
-    Array[File] umiFamiliesGroup = groupUmis.umiFamilies
-    Array[File] umiReleationshipsGroup = groupUmis.umiRelationships
-    Array[File] umiStats = groupUmis.umis
-    Array[File] readCountStats = groupUmis.mappedReadCounts
-    File coverage = collapseUmis.coverage
     Array[File] consensusFiles = collapseUmis.consensus
-    Array[File] vcfFiles = callVariants.vcfFiles
+    Array[File] mergedVcfs = "~{outdir}/VCFfiles/Merged_ConsensusFile_famsize*.vcf"
     File summaryReport = graph.summaryReport
   }
 }
-
-
 
 
 task groupUmis {
