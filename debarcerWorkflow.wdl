@@ -70,7 +70,7 @@ workflow debarcerWorkflow {
       regionFile = regionFile
   } 
 
-
+   
   scatter(region in regionFileIntoArray.out) {
     call groupUmis {
       input:
@@ -115,7 +115,14 @@ workflow debarcerWorkflow {
 
   File coverage = collapseUmis.coverage
   Array[File] consensusFiles = collapseUmis.consensus
-    
+
+
+  call mergeConsensusFiles {
+  input:
+    outdir = outdir
+  }
+  
+  File mergedConsensus = mergeConsensusFiles.mergedConsensus
 
   call callVariants {
     input:
@@ -312,6 +319,33 @@ task graph {
 }
 
 
+task mergeConsensusFiles {
+  input {
+    String modules = "debarcer/2.1.3"
+    Int memory = 32
+    Int timeout = 10
+    String outdir = "./"
+  }
+  
+  command <<<
+    set -euo pipefail
+    debarcer merge -d ~{outdir} -dt consensusfiles
+  >>>
+
+  runtime {
+    memory:  "~{memory} GB"
+    modules: "~{modules}"
+    timeout: "~{timeout}"
+  }
+
+  output {
+    File mergedConsensus = "${outdir}/Consfiles/Merged_ConsensusFile.cons"
+  }
+}
+
+
+
+ 
 task regionFileIntoArray {
   input {
     File regionFile
@@ -334,5 +368,7 @@ task regionFileIntoArray {
     Array[String] out = "${arr}"
   }
 }
+
+
 
 
