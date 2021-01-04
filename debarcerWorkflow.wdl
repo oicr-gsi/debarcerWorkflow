@@ -62,9 +62,14 @@ workflow debarcerWorkflow {
     author: "Richard Jovelin"
     email: "richard.jovelin@oicr.on.ca"
     description: "A package for de-barcoding and error correction of sequencing data containing molecular barcodes"
+    dependencies: [
+      {
+        name: "python/3.6",
+        url: "https://www.python.org/downloads/"
+      }
+    ]
   }
-
-
+  
   call regionFileIntoArray {
     input:
       regionFile = regionFile
