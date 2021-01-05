@@ -391,7 +391,14 @@ task mergeConsensusFiles {
     Int timeout = 10
     String outdir = "./"
   }
-  
+
+  parameter_meta {
+    modules: "Names and versions of modules to load"
+    memory: "Memory allocated for this job"
+    timeout: "Hours before task timeout"
+    outdir: "Output directory with subdirectory structure"    
+  }
+
   command <<<
     set -euo pipefail
     debarcer merge -d ~{outdir} -dt consensusfiles
@@ -417,6 +424,13 @@ task regionFileIntoArray {
     Int memory = 1
     Int timeout = 1
   }    
+
+
+  parameter_meta {
+    regionFile: "Path to file with genomic regions"
+    memory: "Memory allocated for this job"
+    timeout: "Hours before task timeout"
+  }
 
   command <<<
     set -euo pipefail
