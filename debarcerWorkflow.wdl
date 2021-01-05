@@ -237,9 +237,9 @@ task collapseUmis {
     Float percentThreshold = 50 
     Int countThreshold = 1
     Int positionThreshold = 10
-    File refFasta = $HG19_ROOT/hg19_random.fa
-    File refDict = $HG19_ROOT/hg19_random.dict
-    File refIndex = $HG19_ROOT/hg19_random.fa.fai
+    File refFasta = "$HG19_ROOT/hg19_random.fa"
+    File refDict = "$HG19_ROOT/hg19_random.dict"
+    File refIndex = "$HG19_ROOT/hg19_random.fa.fai"
   }
 
   parameter_meta {
@@ -292,9 +292,9 @@ task callVariants {
     Int memory = 32
     Int timeout = 36
     String outdir = "./"    
-    File refFasta = $HG19_ROOT/hg19_random.fa
-    File refDict = $HG19_ROOT/hg19_random.dict
-    File refIndex = $HG19_ROOT/hg19_random.fa.fai
+    File refFasta = "$HG19_ROOT/hg19_random.fa"
+    File refDict = "$HG19_ROOT/hg19_random.dict"
+    File refIndex = "$HG19_ROOT/hg19_random.fa.fai"
     Float referenceThreshold = 95
     Float alternativeThreshold = 2
     Int filterThreshold = 10
