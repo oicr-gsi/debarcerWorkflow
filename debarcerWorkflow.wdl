@@ -181,6 +181,22 @@ task groupUmis {
     Boolean ignoreOrphans = false
   }
 
+  parameter_meta {
+    modules: "Names and versions of modules to load"
+    memory: "Memory allocated for this job"
+    timeout: "Hours before task timeout"
+    outdir: "Output directory with subdirectory structure"    
+    region: "Genomic region in format chrA:xxx-xxx"
+    bamFile: "Path to alignment file" 
+    distance: "Hamming distance threshold for connecting parent-children umis"
+    position: "Umi position threshold for grouping umis together"
+    separator: "String separating the UMI from the remaining of the read name"
+    readCount: "Minimum number of reads in region required for grouping"
+    truncate: "Only pileup columns in the exact region specificied are returned if True. (ie, discard reads overlapping the region)"
+    ignoreOrphans: "Ignore orphans (paired reads that are not in a proper pair) if True"
+  }
+
+
   command <<<
     set -euo pipefail
     debarcer group -o ~{outdir} -r ~{region} -b ~{bamFile} -d ~{distance} -p ~{position} -s ~{separator} -rc ~{readCount} -i ~{ignoreOrphans} -t ~{truncate}
@@ -226,6 +242,29 @@ task collapseUmis {
     File refIndex = $HG19_ROOT/hg19_random.fa.fai
   }
 
+  parameter_meta {
+    modules: "Names and versions of modules to load"
+    memory: "Memory allocated for this job"
+    timeout: "Hours before task timeout"
+    outdir: "Output directory with subdirectory structure"    
+    bamFile: "Path to alignment file" 
+    region: "Genomic region in format chrA:xxx-xxx"
+    maxDepth: "Maximum read depth"
+    truncate: "Only pileup columns in the exact region specificied are returned if True. (ie, discard reads overlapping the region)"
+    ignoreOrphans: "Ignore orphans (paired reads that are not in a proper pair) if True"
+    stepper: "Filter or include reads in the pileup. all: skip reads with BAM_FUNMAP, BAM_FSECONDARY, BAM_FQCFAIL, BAM_FDUP flags, nofilter: uses every single read turning off any filtering"
+    separator: "String separating the UMI from the remaining of the read name"
+    baseQuality: "Base quality score threshold. Bases with quality scores below the threshold are not used in the consensus"
+    familySize: " Comma-separated list of minimum umi family size to collapase on"
+    umiFile: "File with UMI parent-children relationships"
+    percentThreshold: "Majority rule consensus threshold in pileup column"
+    countThreshold: "Base count threshold in pileup column"
+    positionThreshold: "Umi position threshold for grouping umis together"
+    refFasta: "Path to to the reference genome"
+    refDict: "Path to the reference dictionary"
+    refIndex: "Path to the reference index"
+  }
+
   command <<<
     set -euo pipefail
     cp ~{refDict} .
@@ -262,6 +301,21 @@ task callVariants {
     String familySize
   }
 
+
+  parameter_meta {
+    modules: "Names and versions of modules to load"
+    memory: "Memory allocated for this job"
+    timeout: "Hours before task timeout"
+    outdir: "Output directory with subdirectory structure"    
+    refFasta: "Path to to the reference genome"
+    refDict: "Path to the reference dictionary"
+    refIndex: "Path to the reference index"
+    referenceThreshold: "Positions with frequency below reference threshold are considered variable"
+    alternativeThreshold: "Variants with frequency above alternative are considered alternative alleles"
+    filterThreshold: "Minimum number of reads to pass alternative variants"
+    familySize: " Comma-separated list of minimum umi family size to collapase on"
+  }
+
   command <<<
     set -euo pipefail
     cp ~{refDict} .
@@ -296,6 +350,22 @@ task graph {
     Int minChildren = 500
     Float refThreshold = 95
   }    
+
+ 
+  parameter_meta {
+    modules: "Names and versions of modules to load"
+    memory: "Memory allocated for this job"
+    timeout: "Hours before task timeout"
+    outdir: "Output directory with subdirectory structure"    
+    extension: "Figure format"
+    sample: "sample name to appear in report"
+    report: "Generate a report if true"
+    minCov: "Minimum coverage value. Values below are plotted in red"
+    minRatio: "Minimum children to parent umi ratio. Values below are plotted in red"
+    minUmis: "Minimum umi count. Values below are plotted in red"
+    minChildren: "Minimum children umi count. Values below are plotted in red"
+    refThreshold: "Positions with frequency below reference threshold are considered variable"
+  }
 
   command <<<
     set -euo pipefail
