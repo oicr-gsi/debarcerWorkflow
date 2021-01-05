@@ -342,7 +342,6 @@ task graph {
     Int timeout = 36
     String outdir = "./"
     String extension = "png"
-    String sample = sampleName
     Boolean report = true
     Int minCov = 1000
     Float minRatio = 0.1
@@ -358,7 +357,6 @@ task graph {
     timeout: "Hours before task timeout"
     outdir: "Output directory with subdirectory structure"    
     extension: "Figure format"
-    sample: "sample name to appear in report"
     report: "Generate a report if true"
     minCov: "Minimum coverage value. Values below are plotted in red"
     minRatio: "Minimum children to parent umi ratio. Values below are plotted in red"
@@ -369,7 +367,7 @@ task graph {
 
   command <<<
     set -euo pipefail
-    debarcer plot -d ~{outdir} -e ~{extension} -s ~{sample} -r ~{report} -mv ~{minCov} -mr ~{minRatio} -mu ~{minUmis} -mc ~{minChildren} -rt ~{refThreshold}
+    debarcer plot -d ~{outdir} -e ~{extension} -r ~{report} -mv ~{minCov} -mr ~{minRatio} -mu ~{minUmis} -mc ~{minChildren} -rt ~{refThreshold}
   >>>
 
   runtime {
