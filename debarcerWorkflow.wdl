@@ -83,7 +83,7 @@ workflow debarcerWorkflow {
         bamFile = bamFile,
         distance = distance,
         position = position,
-        separator = seprator,   
+        separator = separator,   
         readCount = readCount,
         truncate = truncate,
         ignoreOrphans = ignoreOrphans,  
@@ -114,7 +114,7 @@ workflow debarcerWorkflow {
         familySize = familySize,
         percentThreshold = percentThreshold,
         countThreshold = countThreshold,
-        positionThreshold = positionThreshold
+        position = position
     }
   }
 
@@ -151,7 +151,7 @@ workflow debarcerWorkflow {
       minRatio = minRatio,
       minUmis = minUmis,
       minChildren = minChildren,
-      refThreshold = refThreshold
+      referenceThreshold = referenceThreshold
   }    
 
   #File summaryReport = graph.summaryReport
@@ -159,7 +159,7 @@ workflow debarcerWorkflow {
 
   output {
     Array[File] consensusFiles = collapseUmis.consensus
-    Array[File] mergedVcfs = "~{outdir}/VCFfiles/Merged_ConsensusFile_famsize*.vcf"
+    Array[File] mergedVcfs = glob("${outdir}/VCFfiles/Merged_ConsensusFile_famsize*.vcf")
     File summaryReport = graph.summaryReport
   }
 }
@@ -236,7 +236,7 @@ task collapseUmis {
     File umiFile
     Float percentThreshold = 50 
     Int countThreshold = 1
-    Int positionThreshold = 10
+    Int position = 10
     File refFasta = "$HG19_ROOT/hg19_random.fa"
     File refDict = "$HG19_ROOT/hg19_random.dict"
     File refIndex = "$HG19_ROOT/hg19_random.fa.fai"
@@ -259,7 +259,7 @@ task collapseUmis {
     umiFile: "File with UMI parent-children relationships"
     percentThreshold: "Majority rule consensus threshold in pileup column"
     countThreshold: "Base count threshold in pileup column"
-    positionThreshold: "Umi position threshold for grouping umis together"
+    position: "Umi position threshold for grouping umis together"
     refFasta: "Path to to the reference genome"
     refDict: "Path to the reference dictionary"
     refIndex: "Path to the reference index"
@@ -269,7 +269,7 @@ task collapseUmis {
     set -euo pipefail
     cp ~{refDict} .
     cp ~{refIndex} .
-    debarcer collapse -o ~{outdir} -b ~{bamFile} -rf ~{refFasta} -r ~{region} -u ~{umiFile} -f ~{familySize} -ct ~{countThreshold} -pt ~{percentThreshold} -p ~{positionThreshold} -m ~{maxDepth} -t ~{truncate} -i ~{ignoreOrphans} -stp ~{stepper} -s ~{separator} -bq ~{baseQuality}
+    debarcer collapse -o ~{outdir} -b ~{bamFile} -rf ~{refFasta} -r ~{region} -u ~{umiFile} -f ~{familySize} -ct ~{countThreshold} -pt ~{percentThreshold} -p ~{position} -m ~{maxDepth} -t ~{truncate} -i ~{ignoreOrphans} -stp ~{stepper} -s ~{separator} -bq ~{baseQuality}
   >>>
 
   runtime {
@@ -347,7 +347,7 @@ task graph {
     Float minRatio = 0.1
     Int minUmis = 1000
     Int minChildren = 500
-    Float refThreshold = 95
+    Float referenceThreshold = 95
   }    
 
  
@@ -362,12 +362,12 @@ task graph {
     minRatio: "Minimum children to parent umi ratio. Values below are plotted in red"
     minUmis: "Minimum umi count. Values below are plotted in red"
     minChildren: "Minimum children umi count. Values below are plotted in red"
-    refThreshold: "Positions with frequency below reference threshold are considered variable"
+    referenceThreshold: "Positions with frequency below reference threshold are considered variable"
   }
 
   command <<<
     set -euo pipefail
-    debarcer plot -d ~{outdir} -e ~{extension} -r ~{report} -mv ~{minCov} -mr ~{minRatio} -mu ~{minUmis} -mc ~{minChildren} -rt ~{refThreshold}
+    debarcer plot -d ~{outdir} -e ~{extension} -r ~{report} -mv ~{minCov} -mr ~{minRatio} -mu ~{minUmis} -mc ~{minChildren} -rt ~{referenceThreshold}
   >>>
 
   runtime {
@@ -421,6 +421,7 @@ task mergeConsensusFiles {
 task regionFileIntoArray {
   input {
     File regionFile
+    Array[String] arr=[]
     Int memory = 1
     Int timeout = 1
   }    
@@ -434,7 +435,7 @@ task regionFileIntoArray {
 
   command <<<
     set -euo pipefail
-    arr=()
+    #arr=()
     for line in `cat "~{regionFile}" | while read line ; do echo $line | sed "s/ /:/" | sed "s/ /-/"; done;`; do arr+=("$line"); done;
   >>>
 
