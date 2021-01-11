@@ -68,6 +68,11 @@ workflow debarcerWorkflow {
         url: "https://www.python.org/downloads/"
       }
     ]
+    output_meta: {
+    consensusFiles: "List of consensus files for each genomic region",
+    mergedVcfs: "List of merged VCF files across all regions for a given UMI family size",
+    summaryReport: "HTML report with QC and output metrics"
+    }
   }
   
   call regionFileIntoArray {
