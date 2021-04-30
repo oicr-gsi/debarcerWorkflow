@@ -4,6 +4,7 @@ workflow debarcerWorkflow {
   input {
     String outdir = "./"    
     File bamFile
+    File bamIndex
     File regionFile
     Int distance = 1
     Int position = 10
@@ -21,18 +22,13 @@ workflow debarcerWorkflow {
     Float referenceThreshold = 95
     Float alternativeThreshold = 2
     Int filterThreshold = 10
-    String extension = "png"
-    Boolean report = true
-    Int minCov = 1000
-    Float minRatio = 0.1
-    Int minUmis = 1000
-    Int minChildren = 500
   }
 
 
   parameter_meta {
     outdir: "Output directory with subdirectory structure"    
     bamFile: "Path to alignment file" 
+    bamIndex: "Index file of the bam file" 
     regionFile: "Path to file with genomic regions"
     distance: "Hamming distance threshold for connecting parent-children umis"
     position: "Umi position threshold for grouping umis together"
@@ -50,12 +46,6 @@ workflow debarcerWorkflow {
     referenceThreshold: "Positions with frequency below reference threshold are considered variable"
     alternativeThreshold: "Variants with frequency above alternative are considered alternative alleles"
     filterThreshold: "Minimum number of reads to pass alternative variants"
-    extension: "Figure format"
-    report: "Generate a report if true"
-    minCov: "Minimum coverage value. Values below are plotted in red"
-    minRatio: "Minimum children to parent umi ratio. Values below are plotted in red"
-    minUmis: "Minimum umi count. Values below are plotted in red"
-    minChildren: "Minimum children umi count. Values below are plotted in red"
   }
 
   meta {
@@ -69,9 +59,17 @@ workflow debarcerWorkflow {
       }
     ]
     output_meta: {
-    consensusFiles: "List of consensus files for each genomic region",
-    mergedVcfs: "List of merged VCF files across all regions for a given UMI family size",
-    summaryReport: "HTML report with QC and output metrics"
+    dataFilesGroup: "List of data files with UMI parent-child counts from grouping",
+    umiFamiliesGroup: "List of UMI files with UMI counts within families for each region",
+    umiReleationshipsGroup: "list of summary files with parent-child umi relationships",
+    umiStats: "List of files with UMI counts before grouping",
+    readCountStats: "List of files with mapping read information for each region",
+    coverage: "File with coverage information on each region",
+    consensusFiles: "List of consensus files with nucleotide information after collapse",
+    vcfFiles: "List of vcf files with SNP and indel information",
+    mergedConsensus: "Merged consensus file across regions",
+    mergedUmiFile: "Merged umi file with parent-child UMIs across regions",
+    mergedDataFile: "Merged data file with UMI parent and child counts across regions"
     }
   }
   
@@ -80,8 +78,9 @@ workflow debarcerWorkflow {
       regionFile = regionFile
   } 
 
+  Array[String] genomic_regions = regionFileIntoArray.out
    
-  scatter(region in regionFileIntoArray.out) {
+  scatter(region in genomic_regions) {
     call groupUmis {
       input:
         outdir = outdir,
@@ -94,22 +93,12 @@ workflow debarcerWorkflow {
         ignoreOrphans = ignoreOrphans,  
         region = region
     }
-  }    
   
-  #Array[File] dataFilesGroup = groupUmis.dataFile
-  Array[File] umiFamiliesGroup = groupUmis.umiFamilies
-  #Array[File] umiReleationshipsGroup = groupUmis.umiRelationships
-  #Array[File] umiStats = groupUmis.umis
-  #Array[File] readCountStats = groupUmis.mappedReadCounts
-  
-  Array[Pair[String, File]] pairedRegionsUmiFiles = zip(regionFileIntoArray.out, umiFamiliesGroup)
-  
-  scatter(i in pairedRegionsUmiFiles) {
     call collapseUmis {
       input:
         bamFile = bamFile,
-        region = i.left,
-        umiFile= i.right,
+        region = region,
+        umiFile= groupUmis.umiFamilies,
         maxDepth = maxDepth,
         truncate = truncate,
         ignoreOrphans = ignoreOrphans,
@@ -123,56 +112,73 @@ workflow debarcerWorkflow {
     }
   }
 
-  #File coverage = collapseUmis.coverage
-  #Array[File] consensusFiles = collapseUmis.consensus
+  Array[File] dataFilesGroup = groupUmis.dataFile
+  Array[File] umiFamiliesGroup = groupUmis.umiFamilies
+  Array[File] umiReleationshipsGroup = groupUmis.umiRelationships
+  Array[File] umiStats = groupUmis.umis
+  Array[File] readCountStats = groupUmis.mappedReadCounts
+  
+  File coverage = collapseUmis.coverage[0]
+  Array[File] consensusFiles = collapseUmis.consensus
+
+  scatter(consensus in consensusFiles) {
+    call callVariants {
+      input:
+        consensusFile = consensus,
+        outdir = outdir,
+        referenceThreshold = referenceThreshold,
+        alternativeThreshold = alternativeThreshold,
+        filterThreshold = filterThreshold,
+        familySize = familySize
+    }
+  }
+
+  Array[Array[File]] vcfFiles = callVariants.vcfFiles
 
 
   call mergeConsensusFiles {
-  input:
-    outdir = outdir
-  }
-  
-  #File mergedConsensus = mergeConsensusFiles.mergedConsensus
-
-  call callVariants {
     input:
       outdir = outdir,
-      referenceThreshold = referenceThreshold,
-      alternativeThreshold = alternativeThreshold,
-      filterThreshold = filterThreshold,
-      familySize = familySize
+      consensusFiles = consensusFiles
   }
 
-
-  #Array[File] vcfFiles = callVariants.vcfFiles
-
+  File mergedConsensus = mergeConsensusFiles.mergedConsensus
   
-  call graph {
+  call mergeUmiFiles {
+    input: 
+      outdir = outdir,
+      umiFiles = umiFamiliesGroup
+  }
+
+  File mergedUmiFile = mergeUmiFiles.mergedUmiFile
+
+  call mergeDataFiles {
     input:
       outdir = outdir,
-      extension = extension,
-      report = report,
-      minCov = minCov,
-      minRatio = minRatio,
-      minUmis = minUmis,
-      minChildren = minChildren,
-      referenceThreshold = referenceThreshold
-  }    
+      dataFiles = dataFilesGroup
+  }
 
-  #File summaryReport = graph.summaryReport
-  
+  File mergedDataFile = mergeDataFiles.mergedDataFile
 
   output {
-    Array[File] consensusFiles = collapseUmis.consensus
-    Array[File] mergedVcfs = glob("${outdir}/VCFfiles/Merged_ConsensusFile_famsize*.vcf")
-    File summaryReport = graph.summaryReport
+    Array[File] outputdataFilesGroup =  dataFilesGroup
+    Array[File] outputumiFamiliesGroup = umiFamiliesGroup
+    Array[File] outputumiReleationshipsGroup = umiReleationshipsGroup
+    Array[File] outputumiStats = umiStats
+    Array[File] outputreadCountStats = readCountStats
+    File outputcoverage = coverage
+    Array[File] outputconsensusFiles = consensusFiles
+    Array[Array[File]] outputvcfFiles = vcfFiles
+    File outputmergedConsensus = mergedConsensus
+    File outputmergedUmiFile = mergedUmiFile
+    File outputmergedDataFile = mergedDataFile
   }
 }
 
 
 task groupUmis {
   input {
-    String modules = "debarcer/2.1.3"
+    String modules = "debarcer/2.1.4"
     Int memory = 32
     Int timeout = 36
     String outdir = "./"    
@@ -225,7 +231,7 @@ task groupUmis {
 
 task collapseUmis {
   input {
-    String modules = "debarcer/2.1.3  hg19/p13"
+    String modules = "debarcer/2.1.4  hg19/p13"
     Int memory = 32
     Int timeout = 36
     String outdir = "./"    
@@ -293,7 +299,8 @@ task collapseUmis {
 
 task callVariants {
   input {
-    String modules = "debarcer/2.1.3  hg19/p13"
+    File consensusFile
+    String modules = "debarcer/2.1.4  hg19/p13"
     Int memory = 32
     Int timeout = 36
     String outdir = "./"    
@@ -308,6 +315,7 @@ task callVariants {
 
 
   parameter_meta {
+    consensusFile: "File with nucleotide counts"
     modules: "Names and versions of modules to load"
     memory: "Memory allocated for this job"
     timeout: "Hours before task timeout"
@@ -318,14 +326,14 @@ task callVariants {
     referenceThreshold: "Positions with frequency below reference threshold are considered variable"
     alternativeThreshold: "Variants with frequency above alternative are considered alternative alleles"
     filterThreshold: "Minimum number of reads to pass alternative variants"
-    familySize: " Comma-separated list of minimum umi family size to collapase on"
+    familySize: "Comma-separated list of minimum umi family size to collapase on"
   }
 
   command <<<
     set -euo pipefail
     cp ~{refDict} .
     cp ~{refIndex} .
-    debarcer call -o ~{outdir} -rf ~{refFasta} -rt ~{referenceThreshold} -at ~{alternativeThreshold} -ft ~{filterThreshold} -f ~{familySize}
+    debarcer call -cf ~{consensusFile} -o ~{outdir} -rf ~{refFasta} -rt ~{referenceThreshold} -at ~{alternativeThreshold} -ft ~{filterThreshold} -f ~{familySize}
   >>>
 
   runtime {
@@ -340,73 +348,26 @@ task callVariants {
 }
 
 
-task graph {
-  input {
-    String modules = "debarcer/2.1.3"
-    Int memory = 32
-    Int timeout = 36
-    String outdir = "./"
-    String extension = "png"
-    Boolean report = true
-    Int minCov = 1000
-    Float minRatio = 0.1
-    Int minUmis = 1000
-    Int minChildren = 500
-    Float referenceThreshold = 95
-  }    
-
- 
-  parameter_meta {
-    modules: "Names and versions of modules to load"
-    memory: "Memory allocated for this job"
-    timeout: "Hours before task timeout"
-    outdir: "Output directory with subdirectory structure"    
-    extension: "Figure format"
-    report: "Generate a report if true"
-    minCov: "Minimum coverage value. Values below are plotted in red"
-    minRatio: "Minimum children to parent umi ratio. Values below are plotted in red"
-    minUmis: "Minimum umi count. Values below are plotted in red"
-    minChildren: "Minimum children umi count. Values below are plotted in red"
-    referenceThreshold: "Positions with frequency below reference threshold are considered variable"
-  }
-
-  command <<<
-    set -euo pipefail
-    debarcer plot -d ~{outdir} -e ~{extension} -r ~{report} -mv ~{minCov} -mr ~{minRatio} -mu ~{minUmis} -mc ~{minChildren} -rt ~{referenceThreshold}
-  >>>
-
-  runtime {
-    memory:  "~{memory} GB"
-    modules: "~{modules}"
-    timeout: "~{timeout}"
-  }
-
-  output {
-    Array[File] figureFiles = glob("${outdir}/Figures/*.png")
-    Array[File] imageFiles = glob("${outdir}/Figures/*.svg")
-    File summaryReport = "${outdir}/Report/debarcer_report.html"
-  }
-}
-
-
 task mergeConsensusFiles {
   input {
-    String modules = "debarcer/2.1.3"
+    String modules = "debarcer/2.1.4"
     Int memory = 32
     Int timeout = 10
     String outdir = "./"
+    Array[File] consensusFiles
   }
 
   parameter_meta {
     modules: "Names and versions of modules to load"
     memory: "Memory allocated for this job"
     timeout: "Hours before task timeout"
-    outdir: "Output directory with subdirectory structure"    
+    outdir: "Output directory with subdirectory structure"
+    consensusFiles: "List of consensus files to be merged"    
   }
 
   command <<<
     set -euo pipefail
-    debarcer merge -d ~{outdir} -dt consensusfiles
+    debarcer merge -o ~{outdir} -f ~{sep =" " consensusFiles} -dt consensusfiles
   >>>
 
   runtime {
@@ -421,12 +382,77 @@ task mergeConsensusFiles {
 }
 
 
+task mergeUmiFiles {
+  input {
+    String modules = "debarcer/2.1.4"
+    Int memory = 32
+    Int timeout = 10
+    String outdir = "./"
+    Array[File] umiFiles
+  }
 
- 
+  parameter_meta {
+    modules: "Names and versions of modules to load"
+    memory: "Memory allocated for this job"
+    timeout: "Hours before task timeout"
+    outdir: "Output directory with subdirectory structure"
+    umiFiles: "List of UMI files to be merged"    
+  }
+
+  command <<<
+    set -euo pipefail
+    debarcer merge -o ~{outdir} -f ~{sep =" " umiFiles} -dt umifiles
+  >>>
+
+  runtime {
+    memory:  "~{memory} GB"
+    modules: "~{modules}"
+    timeout: "~{timeout}"
+  }
+
+  output {
+    File mergedUmiFile = "${outdir}/Umifiles/Merged_UmiFile.json"
+  }
+}
+
+
+task mergeDataFiles {
+  input {
+    String modules = "debarcer/2.1.4"
+    Int memory = 32
+    Int timeout = 10
+    String outdir = "./"
+    Array[File] dataFiles
+  }
+
+  parameter_meta {
+    modules: "Names and versions of modules to load"
+    memory: "Memory allocated for this job"
+    timeout: "Hours before task timeout"
+    outdir: "Output directory with subdirectory structure"
+    dataFiles: "List of data files to be merged"    
+  }
+
+  command <<<
+    set -euo pipefail
+    debarcer merge -o ~{outdir} -f ~{sep =" " dataFiles} -dt datafiles
+  >>>
+
+  runtime {
+    memory:  "~{memory} GB"
+    modules: "~{modules}"
+    timeout: "~{timeout}"
+  }
+
+  output {
+    File mergedDataFile = "${outdir}/Datafiles/Merged_DataFile.csv"
+  }
+}
+
+
 task regionFileIntoArray {
   input {
     File regionFile
-    Array[String] arr=[]
     Int memory = 1
     Int timeout = 1
   }    
@@ -440,20 +466,17 @@ task regionFileIntoArray {
 
   command <<<
     set -euo pipefail
-    #arr=()
-    for line in `cat "~{regionFile}" | while read line ; do echo $line | sed "s/ /:/" | sed "s/ /-/"; done;`; do arr+=("$line"); done;
+    cat ~{regionFile} | sed "s/\t/:/" | sed "s/\t/-/"
   >>>
+
+  output {
+    Array[String] out = read_lines(stdout())
+  }
 
   runtime {
     memory:  "~{memory} GB"
     timeout: "~{timeout}"
   }
-
-  output {
-    Array[String] out = "${arr}"
-  }
 }
-
-
 
 
