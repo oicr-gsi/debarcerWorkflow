@@ -80,7 +80,7 @@ workflow debarcerWorkflow {
 
   Array[String] genomic_regions = regionFileIntoArray.out
    
-  scatter(region in genomic_regions) {
+  scatter(interval in genomic_regions) {
     call groupUmis {
       input:
         outdir = outdir,
@@ -91,13 +91,13 @@ workflow debarcerWorkflow {
         readCount = readCount,
         truncate = truncate,
         ignoreOrphans = ignoreOrphans,  
-        region = region
+        region = interval
     }
   
     call collapseUmis {
       input:
         bamFile = bamFile,
-        region = region,
+        region = interval,
         umiFile= groupUmis.umiFamilies,
         maxDepth = maxDepth,
         truncate = truncate,
@@ -210,7 +210,8 @@ task groupUmis {
 
   command <<<
     set -euo pipefail
-    debarcer group -o ~{outdir} -r ~{region} -b ~{bamFile} -d ~{distance} -p ~{position} -s ~{separator} -rc ~{readCount} -i ~{ignoreOrphans} -t ~{truncate}
+    echo ~{region}
+    debarcer group -o ~{outdir} -b ~{bamFile} -d ~{distance} -p ~{position} -s "~{separator}" -rc ~{readCount} -i ~{ignoreOrphans} -t ~{truncate} -r ~{region}
   >>>
 
   runtime {
