@@ -85,6 +85,7 @@ workflow debarcerWorkflow {
       input:
         outdir = outdir,
         bamFile = bamFile,
+        bamIndex = bamIndex,
         distance = distance,
         position = position,
         separator = separator,   
@@ -184,6 +185,7 @@ task groupUmis {
     String outdir = "./"    
     String region
     File bamFile
+    File bamIndex
     Int distance
     Int position
     String separator
@@ -198,7 +200,8 @@ task groupUmis {
     timeout: "Hours before task timeout"
     outdir: "Output directory with subdirectory structure"    
     region: "Genomic region in format chrA:xxx-xxx"
-    bamFile: "Path to alignment file" 
+    bamFile: "Path to alignment file"
+    bamIndex: "Index file of the bam file" 
     distance: "Hamming distance threshold for connecting parent-children umis"
     position: "Umi position threshold for grouping umis together"
     separator: "String separating the UMI from the remaining of the read name"
